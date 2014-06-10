@@ -1,0 +1,86 @@
+chunk ::= {stat [`;´]} [laststat [`;´]]
+
+	block ::= chunk
+
+	stat ::=  
+		 varlist `=´ explist | 														# ASSIGNMENT
+		 functioncall | 															# FUNCTION CALL
+		 do block end | 															# DO
+		 while exp do block end | 													# WHILE
+		 repeat block until exp | 													# REPEAT
+		 if exp then block {elseif exp then block} [else block] end |    			# IF
+		 for Name `=´ exp `,´ exp [`,´ exp] do block end | 							# FOR
+		 for namelist in explist do block end | 									# FOR
+		 function funcname funcbody | 												# DEFINE FUNCTION
+		 local function Name funcbody | 											# LOCAL DEFINE FUNCTION
+		 local namelist [`=´ explist] 												# LOCAL DEFINE
+
+	laststat ::= return [explist] | break											# LAST STATEMENT
+
+	funcname ::= Name {`.´ Name} [`:´ Name]
+
+	varlist ::= var {`,´ var}
+
+	var ::=
+		 Name |
+		 prefixexp `[´ exp `]´ |
+		 prefixexp `.´ Name 
+
+	namelist ::= Name { `,´ Name }
+
+	explist ::= { `,´} exp
+
+	exp ::=
+		 nil |
+		 false |
+		 true |
+		 Number |
+		 String |
+		 `...´ |
+		 Function | 
+		 prefixexp |
+		 tableconstructor |
+		 exp binop exp |
+		 unop exp 
+
+	prefixexp ::=
+		 var |
+		 functioncall |
+		 `(´ exp `)´
+
+	functioncall ::=
+		 prefixexp args |
+		 prefixexp `:´ Name args 
+
+	args ::=
+		 `(´ [explist] `)´ |
+		 tableconstructor |
+		 String 
+
+	Function ::= function funcbody
+
+	funcbody ::= `(´ [parlist] `)´ block end
+
+	parlist ::= namelist [`,´ `...´] | `...´
+
+	tableconstructor ::= `{´ [fieldlist] `}´
+
+	fieldlist ::= field {fieldsep field} [fieldsep]
+
+	field ::=
+		 `[´ exp `]´ `=´ exp |
+		 Name `=´ exp |
+		 exp
+
+	fieldsep ::=
+		 `,´ |
+		 `;´
+
+	binop ::= 
+		 `+´ | `-´ | `*´ | `/´ | `^´ | `%´ |
+		 `..´ |
+		 `<´ | `<=´ | `>´ | `>=´ | `==´ | `~=´ |
+		 and | or
+
+	unop ::=
+		 `-´ | not | `#´
