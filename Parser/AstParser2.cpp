@@ -70,6 +70,12 @@ bool AstParser2::TryBlock( AstItem* item )
 	if( HasError() )
 		return false;
 
+    // Skip ending ';'
+    if( _advance.CurrentType() == TT_SEMICOLON ) {
+        _advance.Next();
+        Confirm();
+    }
+
 	item->AppendChild( block.take() );
 	return true;
 }
@@ -312,7 +318,47 @@ bool AstParser2::TryForStatement( AstItem* item )
 	if( !ShouldNameList( forStatement.data() ) )
 		return false;
 
-	if( forStatement->ChildrenCount() > 1 ) {
+    if( _advance.CurrentType() == TT_ASSIGN ) {
+        if( forStatement->ChildrenCount() > 1 ) {
+            GenerateError( "Expected only one statement before '=' in for statement" );
+            return false;
+        }
+
+        // index
+        _advance.Next(); // skip '='
+        Confirm();
+
+        if( !TryExpression( forStatement.data() ) ) {
+            if( !HasError() )
+                GenerateError( "Expected expression after '=' in for statement" );
+            return false;
+        }
+
+        if( _advance.CurrentType() != TT_COMMA ) {
+            GenerateError( "Expected ',' after name in 'for' statement" );
+            return false;
+        }
+        _advance.Next(); // skip ','
+        Confirm();
+
+        if( !TryExpression( forStatement.data() ) ) {
+            if( !HasError() )
+                GenerateError( "Expected expression after ',' in for statement" );
+            return false;
+        }
+
+        // last expression - step
+        if( _advance.CurrentType() == TT_COMMA ) {
+            _advance.Next(); // skip ','
+            Confirm();
+            if( !TryExpression( forStatement.data() ) ) {
+                if( !HasError() )
+                    GenerateError( "Expected expression after ',' in for statement" );
+                return false;
+            }
+        }
+    }
+    else {
 		// iterator
 		forStatement->SetType( AstInfo::ForIteratorStatement );
 
@@ -327,45 +373,6 @@ bool AstParser2::TryForStatement( AstItem* item )
 			if( !HasError() )
 				GenerateError( "Expected expressionlist after 'in'' keyword in 'for' statement" );
 			return false;
-		}
-	}
-	else {
-		// index
-		if( _advance.CurrentType() != TT_ASSIGN ) {
-			GenerateError( "Expected '=' after name in 'for' statement" );
-			return false;
-		}
-		_advance.Next(); // skip '='
-		Confirm();
-
-		if( !TryExpression( forStatement.data() ) ) {
-			if( !HasError() )
-				GenerateError( "Expected expression after '=' in for statement" );
-			return false;
-		}
-
-		if( _advance.CurrentType() != TT_COMMA ) {
-			GenerateError( "Expected ',' after name in 'for' statement" );
-			return false;
-		}
-		_advance.Next(); // skip ','
-		Confirm();
-
-		if( !TryExpression( forStatement.data() ) ) {
-			if( !HasError() )
-				GenerateError( "Expected expression after ',' in for statement" );
-			return false;
-		}
-
-		// last expression - step
-		if( _advance.CurrentType() == TT_COMMA ) {
-			_advance.Next(); // skip ','
-			Confirm();
-			if( !TryExpression( forStatement.data() ) ) {
-				if( !HasError() )
-					GenerateError( "Expected expression after ',' in for statement" );
-				return false;
-			}
 		}
 	}
 
@@ -727,6 +734,7 @@ bool AstParser2::TryField( AstItem* item )
 	QScopedPointer< AstItem > field( new AstItem( AstInfo::Field ) );
 	if( _advance.CurrentType() == TT_LEFT_SQUARE ) {
 		_advance.Next();
+        Confirm();
 		if( !TryExpression( field.data() ) ) {
 			if( !HasError() )
 				GenerateError( "Expected expression" );
@@ -738,12 +746,14 @@ bool AstParser2::TryField( AstItem* item )
 			return false;
 		}
 		_advance.Next();
+        Confirm();
 
 		if( _advance.CurrentType() != TT_ASSIGN ) {
 			GenerateError( "Expected '=' in field assignment" );
 			return false;
 		}
 		_advance.Next();
+        Confirm();
 
 		if( !TryExpression( field.data() ) ) {
 			if( !HasError() )
@@ -753,7 +763,8 @@ bool AstParser2::TryField( AstItem* item )
 	}
 	else if( TryExpression( field.data() ) ) {
 		if( _advance.CurrentType() == TT_ASSIGN ) {
-			const AstItem* prefix = field->Child( 0 );
+            const AstItem* expression = field->Child( 0 );
+            const AstItem* prefix = expression ? expression->Child( 0 ) : nullptr;
 			bool isName = prefix
 					&& prefix->Is( AstInfo::Prefix )
 					&& prefix->ChildrenCount() == 1
@@ -1002,7 +1013,7 @@ void AstParser2::GenerateError( const QString& description )
 	if( _error.size() > 0 )
 		qFatal( "error rethrow" );
 
-	QString error( "Error: " );
+    QString error( "AstParser2 :: Error: " );
 	error.append( description ).append( "\n" )
 			.append( "at pos: " ).append( QString::number( _current.CurrentPos() ) )
 			.append( ", line: " ).append( QString::number( _current.CurrentLine() ) )
@@ -1010,4 +1021,7 @@ void AstParser2::GenerateError( const QString& description )
 
 	_error = error;
 	qDebug( qPrintable( error ) );
+    qDebug( "[Line]" );
+    qDebug( qPrintable( _advance.CurrentLineText() ) );
+    qDebug( "[Line]" );
 }

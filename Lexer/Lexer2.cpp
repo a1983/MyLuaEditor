@@ -11,8 +11,32 @@ Lexer2::Lexer2( const QString* source )
 {
 	_state.Begin = _state.Current = _state.Previos = source->data();
 	_state.End = _state.Begin + source->size();
-	_state.LineNumber = 0;
-	_state.Type = Next();
+    _state.LineNumber = 1;
+
+    // SkipSheBang();
+    if( _state.Current->unicode() == L'#' ) {
+        ++_state.Current;
+        if( _state.Current->unicode() == L'!' ) {
+            ++_state.Current;
+            while( HasNext() ) {
+                if( CurrIsNewline() ) {
+                    SkipNewLine();
+                    _state.Type = Next();
+                    return;
+                }
+                ++_state.Current;
+            }
+            _state.Previos = _state.Current = _state.End;
+            _state.Type = TT_END_OF_FILE;
+        }
+        else {
+            _state.Previos = _state.Current = _state.End;
+            _state.Type = TT_ERROR;
+        }
+    }
+    else {
+        _state.Type = Next();
+    }
 }
 
 Lexer2::Lexer2( const LexerState& state ) :
@@ -62,7 +86,7 @@ TokenType Lexer2::Next()
 				if( !HasNext() )
 					break;
 			}
-			++_state.Current;
+            SkipNewLine();
 			break;
 		}
 		case L'[': {  /* long string or simply '[' */
@@ -196,7 +220,26 @@ TokenType Lexer2::Next()
 	}
 
 	_state.Previos = _state.Current;
-	return _state.Type = TT_END_OF_FILE;
+    return _state.Type = TT_END_OF_FILE;
+}
+
+const QString Lexer2::CurrentLineText() const
+{
+    const QChar* previous = _state.Previos;
+    while( previous > _state.Begin ) {
+        --previous;
+        if( previous->unicode() == '\n' )
+            break;
+    }
+
+    const QChar* end = _state.Current;
+    while( end != _state.End ) {
+        ++end;
+        if( end->unicode() == '\n' )
+            break;
+    }
+
+    return QString::fromRawData( previous, end - previous + 1 );
 }
 
 const QString Lexer2::CurrentString() const
@@ -235,7 +278,7 @@ int Lexer2::SkipMultiLineSeparator() {
 }
 
 bool Lexer2::SkipMultiLineContent( int count ) {
-	++_state.Current;             /* skip 2nd `[' */
+    ++_state.Current;       /* skip 2nd `[' */
 	if( CurrIsNewline() )   /* string starts with a newline? */
 		SkipNewLine();      /* skip it */
 
@@ -322,9 +365,10 @@ bool Lexer2::ReadString()
 					return false;
 				}
 				/* digital escape \ddd */
-				if( !SkipDecimalEscapeSequence() )
+                if( !SkipDecimalEscapeSequence() ) {
 					return false;
-				break; /* escape sequences */
+                }
+                continue;
 			}
 			}// /* escape sequences */
 		}
@@ -380,7 +424,25 @@ bool Lexer2::SkipHexEscapeSequence()
 void Lexer2::SkipNumber()
 {
 	/* LUA_NUMBER */
-	do {
+    if( _state.Current->unicode() == L'0' ) {
+        ++_state.Current;
+        if( !HasNext() )
+            return;
+        if( _state.Current->unicode() == L'x' ) {
+            do {
+                ++_state.Current;
+                if( !HasNext() )
+                    return;
+            } while( _state.Current->isLetter() || _state.Current->isDigit() );
+        }
+    }
+    else if( _state.Current->isDigit() ) {
+        ++_state.Current;
+        if( !HasNext() )
+            return;
+    }
+
+    while( _state.Current->isNumber() || _state.Current->unicode() == L'.' ) {
 		++_state.Current;
 		if( !HasNext() )
 			break;
@@ -397,7 +459,7 @@ void Lexer2::SkipNumber()
 					break;
 			}
 		}
-	} while( _state.Current->isNumber() || _state.Current->unicode() == L'.' );
+    }
 }
 
 bool Lexer2::CurrentIsAlpha() const

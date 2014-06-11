@@ -15,6 +15,7 @@ public:
 	bool            HasNext() const;
 	TokenType       Next();
 
+    const QString   CurrentLineText() const;
 	const QString   CurrentString() const;
 	TokenType       CurrentType() const;
 	int             CurrentLine() const;

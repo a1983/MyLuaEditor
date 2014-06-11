@@ -50,14 +50,17 @@ void MainWindow::openFile(const QString &path)
 	if( !fileName.isEmpty() ) {
 		QFile file( fileName );
 		if( file.open( QFile::ReadOnly | QFile::Text ) ) {
-			editor->setPlainText( file.readAll() );
 
-			CodeModel2* model = qobject_cast< CodeModel2* >( treeView->model() );
-			model->RebuildModel( editor->toPlainText() );
+            QByteArray source( file.readAll() );
 
-			AstParser2 ast( editor->toPlainText() );
-			ast.Parse();
-			qDebug() << ast.Debug();
+            CodeModel2* model = qobject_cast< CodeModel2* >( treeView->model() );
+            model->RebuildModel( source );
+
+//            AstParser2 ast( source );
+//            ast.Parse();
+//            qDebug() << ast.Debug();
+
+            editor->setPlainText( source );
 		}
 	}
 }
