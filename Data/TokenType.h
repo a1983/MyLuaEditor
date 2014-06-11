@@ -25,20 +25,20 @@ enum TokenType {
 
 	TT_NAME,
 
-	TT_MINUS,		// '-'
-	TT_PLUS,		// '+'
-	TT_MAGNIFY,		// '*'
-	TT_SLASH,		// '/'
-	TT_ASSIGN,		// '='
-	TT_LESS,		// '<'
-	TT_GREAT,		// '>'
-	TT_TILDA,		// '~'
-	TT_COLON,		// ':'
-	TT_CARET,		// '^'
-	TT_PERCENT,		// '%'
-	TT_SEMICOLON,	// ';'
-	TT_COMMA,		// ','
-	TT_NUMBER_SIGN,	// '#'
+	TT_MINUS,			// '-'
+	TT_PLUS,			// '+'
+	TT_MAGNIFY,			// '*'
+	TT_SLASH,			// '/'
+	TT_ASSIGN,			// '='
+	TT_LESS,			// '<'
+	TT_GREAT,			// '>'
+	TT_TILDA,			// '~'
+	TT_COLON,			// ':'
+	TT_CARET,			// '^'
+	TT_PERCENT,			// '%'
+	TT_SEMICOLON,		// ';'
+	TT_COMMA,			// ','
+	TT_NUMBER_SIGN,		// '#'
 
 	TT_LEFT_SQUARE,		// '['
 	TT_RIGHT_SQUARE,	// ']'
@@ -50,8 +50,13 @@ enum TokenType {
 	TT_DO,
 	TT_WHILE,
 	TT_REPEAT,
+	TT_UNTIL,
 	TT_IF,
+	TT_THEN,
+	TT_ELSEIF,
+	TT_ELSE,
 	TT_FOR,
+	TT_IN,
 	TT_RETURN,
 	TT_BREAK,
 	TT_END,

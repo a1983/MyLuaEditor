@@ -15,6 +15,8 @@ public:
 	bool HasError() const;
 	QString Error() const;
 
+	AstItem* Result();
+
 	QString Debug();
 
 private:
@@ -22,7 +24,15 @@ private:
 	bool TryStatement			( AstItem* item );
 	bool TryLastStatement		( AstItem* item );
 
+	bool TryDoStatement			( AstItem* item );
+	bool TryWhileStatement		( AstItem* item );
+	bool TryRepeatStatement		( AstItem* item );
+	bool TryIfStatement			( AstItem* item );
+	bool TryForStatement		( AstItem* item );
+	bool TryFunctionStatement	( AstItem* item );
+	bool TryLocalStatement		( AstItem* item );
 	bool TryCallOrAssign		( AstItem* item );
+
 	bool TryPrefixExpression	( AstItem* item );
 	bool TryPrefixSubExpression	( AstItem* item );
 	bool TryArgs				( AstItem* item );
@@ -36,9 +46,10 @@ private:
 	bool TryFunctionParams		( AstItem* item );
 	bool TryFunctionParam		( AstItem* item );
 
+	bool ShouldNameList			( AstItem* item );
+
 private:
 	void Confirm();
-	void Decline();
 	void GenerateError( const QString& description );
 
 private:

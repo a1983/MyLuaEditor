@@ -73,7 +73,7 @@ end_of_block:
 	return true;
 }
 
-bool ASTParser::ParseGlobalDefineOrFunctionCall( Context* context )
+bool ASTParser::ParseGlobalDefineOrFunctionCall( Context* /*context*/ )
 {
 	// Create AST block, if parsing done, append as child to context
 	QScopedPointer< Context > statement( new Context( "gdfc" ) );
@@ -89,39 +89,40 @@ bool ASTParser::ParseGlobalDefineOrFunctionCall( Context* context )
 		if( statement->Children.last()->Name == "arg" )
 			return false;
 	}
+	return false;
 }
 
-bool ASTParser::ParseGlobalFunctionDefine(Context* context)
+bool ASTParser::ParseGlobalFunctionDefine(Context* /*context*/)
 {
 	return false;
 }
 
-bool ASTParser::ParseDoStatement(Context* context)
+bool ASTParser::ParseDoStatement(Context* /*context*/)
 {
 	return false;
 }
 
-bool ASTParser::ParseWhileStatement(Context* context)
+bool ASTParser::ParseWhileStatement(Context* /*context*/)
 {
 	return false;
 }
 
-bool ASTParser::ParseRepeatStatement(Context* context)
+bool ASTParser::ParseRepeatStatement(Context* /*context*/)
 {
 	return false;
 }
 
-bool ASTParser::ParseIfStatement(Context* context)
+bool ASTParser::ParseIfStatement( Context* /*context*/ )
 {
 	return false;
 }
 
-bool ASTParser::ParseForStatement( Context* context )
+bool ASTParser::ParseForStatement( Context* /*context*/ )
 {
 	return false;
 }
 
-bool ASTParser::ParseLocalDefine( Context* context )
+bool ASTParser::ParseLocalDefine( Context* /*context*/ )
 {
 	return false;
 }
@@ -290,7 +291,7 @@ bool ASTParser::ParseTableConstructor( Context* context )
 	return true;
 }
 
-bool ASTParser::ParseAnonymousFunction( Context* context )
+bool ASTParser::ParseAnonymousFunction( Context* /*context*/ )
 {
 	return false;
 }

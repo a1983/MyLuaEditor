@@ -18,13 +18,16 @@ public:
 	const AstItem* Child( int index ) const;
 	const AstItem* LastChild();
 
+	void SetType( AstInfo::Type type );
+	QString TypeText() const;
+
 	AstInfo Info;
 
-	bool Is( AstInfo::Type type ) const;
-
-	bool HasParent() const;
-	bool HasSiblings() const;
-	bool HasChildren() const;
+	bool	Is( AstInfo::Type type ) const;
+	bool	HasParent() const;
+	bool	HasSiblings() const;
+	bool	HasChildren() const;
+	int		ChildrenCount() const;
 
 	AstItem* Parent();
 

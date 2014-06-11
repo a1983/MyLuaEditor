@@ -195,6 +195,7 @@ TokenType Lexer2::Next()
 		}
 	}
 
+	_state.Previos = _state.Current;
 	return _state.Type = TT_END_OF_FILE;
 }
 
@@ -412,13 +413,30 @@ TokenType Lexer2::CurrentKeyword() const
 {
 	static QMap< QString, TokenType > _keywords;
 	if( _keywords.isEmpty() ) {
-		_keywords.insert( "return",		TT_RETURN );
 		_keywords.insert( "nil",		TT_NIL );
+		_keywords.insert( "true",		TT_TRUE );
+		_keywords.insert( "false",		TT_FALSE );
+
 		_keywords.insert( "not",		TT_NOT );
 		_keywords.insert( "and",		TT_AND );
 		_keywords.insert( "or",			TT_OR );
+
 		_keywords.insert( "local",		TT_LOCAL );
 		_keywords.insert( "function",	TT_FUNCTION );
+
+		_keywords.insert( "do",			TT_DO );
+		_keywords.insert( "while",		TT_WHILE );
+		_keywords.insert( "repeat",		TT_REPEAT );
+		_keywords.insert( "until",		TT_UNTIL );
+		_keywords.insert( "if",			TT_IF );
+		_keywords.insert( "then",		TT_THEN );
+		_keywords.insert( "elseif",		TT_ELSEIF );
+		_keywords.insert( "else",		TT_ELSE );
+		_keywords.insert( "for",		TT_FOR );
+		_keywords.insert( "in",			TT_IN );
+
+		_keywords.insert( "return",		TT_RETURN );
+		_keywords.insert( "break",		TT_BREAK );
 		_keywords.insert( "end",		TT_END );
 	}
 

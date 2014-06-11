@@ -8,10 +8,19 @@ struct AstInfo {
 		Global,
 
 		Block,
-		Statement,
 
-		Call,
-		Assign,
+		DoStatement,
+		WhileStatement,
+		RepeatStatement,
+		IfStatement,
+		ForIndexStatement,
+		ForIteratorStatement,
+		FunctionStatement,
+		LocalStatement,
+		CallStatement,
+		AssignStatement,
+		ReturnStatement,
+		BreakStatement,
 
 		Prefix,
 		Name,

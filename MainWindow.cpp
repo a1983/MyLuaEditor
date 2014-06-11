@@ -12,17 +12,13 @@
 #include <QVBoxLayout>
 
 #include "Editor.h"
-#include "CodeModel.h"
 
+#include "Model/CodeModel2.h"
 #include "Parser/AstParser2.h"
 
 MainWindow::MainWindow( QWidget* parent )
 	: QMainWindow( parent )
 {
-	AstParser2 ast( "hw = function() print [[Hello world]] end" );
-	ast.Parse();
-	qDebug() << ast.Debug();
-
 	setupFileMenu();
 	setupHelpMenu();
 	setupEditor();
@@ -43,7 +39,6 @@ void MainWindow::newFile()
 	editor->clear();
 }
 
-#include "Lexer.h"
 void MainWindow::openFile(const QString &path)
 {
 	QString fileName = path;
@@ -57,15 +52,12 @@ void MainWindow::openFile(const QString &path)
 		if( file.open( QFile::ReadOnly | QFile::Text ) ) {
 			editor->setPlainText( file.readAll() );
 
-			CodeModel* model = qobject_cast< CodeModel* >( treeView->model() );
+			CodeModel2* model = qobject_cast< CodeModel2* >( treeView->model() );
 			model->RebuildModel( editor->toPlainText() );
 
-			qDebug();qDebug();qDebug();
-
-			Lexer lex( editor->toPlainText() );
-			while( lex.Next() > 0 ) {
-				qDebug() << lex.CurrentString();
-			}
+			AstParser2 ast( editor->toPlainText() );
+			ast.Parse();
+			qDebug() << ast.Debug();
 		}
 	}
 }
@@ -128,7 +120,7 @@ void MainWindow::setupOutline()
 
 	treeView = new QTreeView( this );
 	treeView->setHeaderHidden( true );
-	CodeModel* model = new CodeModel();
+	CodeModel2* model = new CodeModel2();
 	treeView->setModel( model );
 
 	dock->setWidget( treeView );

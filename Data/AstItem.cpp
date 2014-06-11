@@ -42,6 +42,16 @@ const AstItem* AstItem::LastChild()
 	return _children.last();
 }
 
+void AstItem::SetType( AstInfo::Type type )
+{
+	Info.AstType = type;
+}
+
+QString AstItem::TypeText() const
+{
+	return AstTypeText( Info.AstType );
+}
+
 bool AstItem::Is( AstInfo::Type type ) const
 {
 	return type == Info.AstType;
@@ -60,6 +70,11 @@ bool AstItem::HasSiblings() const
 bool AstItem::HasChildren() const
 {
 	return _children.size() > 0;
+}
+
+int AstItem::ChildrenCount() const
+{
+	return _children.size();
 }
 
 AstItem* AstItem::Parent()
