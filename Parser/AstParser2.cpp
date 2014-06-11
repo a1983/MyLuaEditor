@@ -345,7 +345,7 @@ bool AstParser2::TryForStatement( AstItem* item )
 		}
 
 		if( _advance.CurrentType() != TT_COMMA ) {
-			GenerateError( "Expected '=' after name in 'for' statement" );
+			GenerateError( "Expected ',' after name in 'for' statement" );
 			return false;
 		}
 		_advance.Next(); // skip ','
@@ -518,7 +518,7 @@ bool AstParser2::TryCallOrAssign( AstItem* item )
 	//
 	// should be assigned to
 	if( _advance.CurrentType() != TT_ASSIGN ) {
-		GenerateError( "Expected '='" );
+		GenerateError( "Expected '=' in assignment" );
 		return false;
 	}
 	_advance.Next();
@@ -740,7 +740,7 @@ bool AstParser2::TryField( AstItem* item )
 		_advance.Next();
 
 		if( _advance.CurrentType() != TT_ASSIGN ) {
-			GenerateError( "Expected '='" );
+			GenerateError( "Expected '=' in field assignment" );
 			return false;
 		}
 		_advance.Next();
@@ -751,23 +751,30 @@ bool AstParser2::TryField( AstItem* item )
 			return false;
 		}
 	}
-	else if( _advance.CurrentType() == TT_NAME ) {
-		new AstItem( AstInfo::Name, field.data() );
+	else if( TryExpression( field.data() ) ) {
+		if( _advance.CurrentType() == TT_ASSIGN ) {
+			const AstItem* prefix = field->Child( 0 );
+			bool isName = prefix
+					&& prefix->Is( AstInfo::Prefix )
+					&& prefix->ChildrenCount() == 1
+					&& prefix->Child( 0 )->Is( AstInfo::Name );
+			if( isName ) {
+				_advance.Next(); // skip '='
+				Confirm();
 
-		_advance.Next();
-		if( _advance.CurrentType() != TT_ASSIGN ) {
-			GenerateError( "Expected '='" );
-			return false;
-		}
-		_advance.Next();
-
-		if( !TryExpression( field.data() ) ) {
-			if( !HasError() )
-				GenerateError( "Expected expression" );
-			return false;
+				if( !TryExpression( field.data() ) ) {
+					if( !HasError() )
+						GenerateError( "Expected expression" );
+					return false;
+				}
+			}
+			else {
+				GenerateError( "Unexpected '=' at field def" );
+				return false;
+			}
 		}
 	}
-	else if( !TryExpression( field.data() ) ) {
+	else {
 		return false;
 	}
 
@@ -928,8 +935,11 @@ bool AstParser2::TryFunctionParams( AstItem* item )
 	}
 
 	while( _advance.CurrentType() == TT_COMMA ) {
+		_advance.Next(); // skip ','
+		Confirm();
+
 		if( !TryFunctionParam( item ) ) {
-			GenerateError( "Expected name or '...'" );
+			GenerateError( "Expected name or '...' in function params" );
 			return false;
 		}
 		if( item->LastChild()->Is( AstInfo::Dots ) )

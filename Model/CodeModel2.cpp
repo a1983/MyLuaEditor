@@ -20,7 +20,7 @@ CodeModel2::~CodeModel2()
 void CodeModel2::RebuildModel( const QString& source )
 {
 	beginResetModel();
-	delete _root;
+//	delete _root;
 //	_root = new AstItem( "Global" );
 	if( _parser )
 		delete _parser;

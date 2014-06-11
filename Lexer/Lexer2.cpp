@@ -40,7 +40,7 @@ TokenType Lexer2::Next()
 		}
 		case L'-': {  /* '-' or '--' (comment) */
 			++_state.Current;
-			if( !HasNext() || _state.Current->unicode() != L'-' ) {
+			if( _state.Current->unicode() != L'-' ) {
 				return _state.Type = TT_MINUS;;
 			}
 			/* else is a comment */
@@ -252,9 +252,9 @@ bool Lexer2::SkipMultiLineContent( int count ) {
 			SkipNewLine();
 			break;
 		}
+		default:
+			++_state.Current;
 		}
-
-		++_state.Current;
 	}
 
 	return false;
@@ -304,7 +304,8 @@ bool Lexer2::ReadString()
 					return false;
 				break;
 			case L'\n': case L'\r':
-				SkipNewLine(); break; /* escape sequences */
+				++_state.LineNumber;
+				break;
 			case L'z': { /* zap following span of spaces */
 				++_state.Current; /* skip the 'z' */
 				while( HasNext() && _state.Current->isSpace() ) {
