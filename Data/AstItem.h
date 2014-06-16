@@ -1,44 +1,26 @@
 #ifndef ASTITEM_H
 #define ASTITEM_H
 
-#include <QList>
-#include <QString>
-
-#include "AstInfo.h"
+#include <QLinkedList>
 
 class AstItem
 {
 public:
-	explicit AstItem( AstItem* parent = nullptr );
-	explicit AstItem( const AstInfo::Type& type, AstItem* parent = nullptr );
-	~AstItem();
+    AstItem( AstItem* parent );
+    ~AstItem();
 
-	void AppendChild( AstItem* child );
+    bool HasParent() const;
+    bool HasSiblings() const;
+    bool HasChildren() const;
 
-	const AstItem* Child( int index ) const;
-	const AstItem* LastChild();
-
-	void SetType( AstInfo::Type type );
-	QString TypeText() const;
-
-	AstInfo Info;
-
-	bool	Is( AstInfo::Type type ) const;
-	bool	HasParent() const;
-	bool	HasSiblings() const;
-	bool	HasChildren() const;
-	int		ChildrenCount() const;
-
-	AstItem* Parent();
-
-	int SiblingPos() const;
-	int ChildrenPos( const AstItem* child ) const;
-
-	QString DebugString( int level = 0 ) const;
+    int SiblingPos() const;
 
 private:
-	AstItem*				_parent;
-	QList< const AstItem* > _children;
+    int _pos;
+    int _size;
+
+    AstItem*   _parent;
+    QLinkedList< AstItem* > _children;
 };
 
 #endif // ASTITEM_H
