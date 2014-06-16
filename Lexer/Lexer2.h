@@ -14,12 +14,18 @@ public:
 
 	bool            HasNext() const;
 	TokenType       Next();
+    bool            NextIf( TokenType type );
 
     const QString   CurrentLineText() const;
 	const QString   CurrentString() const;
 	TokenType       CurrentType() const;
 	int             CurrentLine() const;
-	int             CurrentPos() const;
+
+    int             TokenBeginPos() const;
+    int             TokenEndPos() const;
+    int             TokenSize() const;
+
+    bool            Is( TokenType type ) const;
 
 private:
 	int				SkipMultiLineSeparator();

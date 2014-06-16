@@ -49,12 +49,10 @@ private:
 	bool ShouldNameList			( AstItem* item );
 
 private:
-	void Confirm();
 	void GenerateError( const QString& description );
 
 private:
-	Lexer2 _current;
-	Lexer2 _advance;
+    Lexer2 _lexer;
 
 	const QString _source;
 

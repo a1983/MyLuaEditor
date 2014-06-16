@@ -223,6 +223,15 @@ TokenType Lexer2::Next()
     return _state.Type = TT_END_OF_FILE;
 }
 
+bool Lexer2::NextIf( TokenType type )
+{
+    if( _state.Type == type ) {
+        Next();
+        return true;
+    }
+    return false;
+}
+
 const QString Lexer2::CurrentLineText() const
 {
     const QChar* previous = _state.Previos;
@@ -257,9 +266,24 @@ int Lexer2::CurrentLine() const
 	return _state.LineNumber;
 }
 
-int Lexer2::CurrentPos() const
+int Lexer2::TokenBeginPos() const
 {
-	return _state.Current - _state.Begin;
+    return _state.Previos - _state.Begin;
+}
+
+int Lexer2::TokenEndPos() const
+{
+    return _state.Current - _state.Begin;
+}
+
+int Lexer2::TokenSize() const
+{
+    return _state.Current - _state.Previos;
+}
+
+bool Lexer2::Is( TokenType type ) const
+{
+    return _state.Type == type;
 }
 
 /*

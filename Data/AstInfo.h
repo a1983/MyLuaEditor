@@ -37,7 +37,11 @@ struct AstInfo {
 
 		FunctionBody
 	};
-	Type AstType;
+
+    Type    AstType;
+    int     Pos;
+    int     Size;
+    int     Line;
 };
 
 QString AstTypeText( AstInfo::Type type );
