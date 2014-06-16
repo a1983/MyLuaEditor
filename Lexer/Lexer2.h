@@ -13,8 +13,11 @@ public:
 	explicit Lexer2	( const LexerState& state );
 
 	bool            HasNext() const;
+    bool            NextIf( TokenType type );
 	TokenType       Next();
 
+
+    bool            Is( TokenType type ) const;
 	const QString   CurrentString() const;
 	TokenType       CurrentType() const;
 	int             CurrentLine() const;

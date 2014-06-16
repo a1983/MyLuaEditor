@@ -46,7 +46,6 @@ void MainWindow::openFile(const QString &path)
 	if( fileName.isNull() )
 		fileName = QFileDialog::getOpenFileName( this,
 												 tr( "Open File" ), "", "Lua Files (*.lua)" );
-
 	if( !fileName.isEmpty() ) {
 		QFile file( fileName );
 		if( file.open( QFile::ReadOnly | QFile::Text ) ) {
@@ -54,10 +53,6 @@ void MainWindow::openFile(const QString &path)
 
 			CodeModel2* model = qobject_cast< CodeModel2* >( treeView->model() );
 			model->RebuildModel( editor->toPlainText() );
-
-			AstParser2 ast( editor->toPlainText() );
-			ast.Parse();
-			qDebug() << ast.Debug();
 		}
 	}
 }

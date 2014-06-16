@@ -11,7 +11,7 @@ Lexer2::Lexer2( const QString* source )
 {
 	_state.Begin = _state.Current = _state.Previos = source->data();
 	_state.End = _state.Begin + source->size();
-	_state.LineNumber = 0;
+    _state.LineNumber = 1;
 	_state.Type = Next();
 }
 
@@ -22,7 +22,16 @@ Lexer2::Lexer2( const LexerState& state ) :
 
 bool Lexer2::HasNext() const
 {
-	return _state.Current < _state.End;
+    return _state.Current < _state.End;
+}
+
+bool Lexer2::NextIf( TokenType type )
+{
+    if( _state.Type == type ) {
+        Next();
+        return true;
+    }
+    return false;
 }
 
 TokenType Lexer2::Next()
@@ -62,7 +71,7 @@ TokenType Lexer2::Next()
 				if( !HasNext() )
 					break;
 			}
-			++_state.Current;
+            SkipNewLine();
 			break;
 		}
 		case L'[': {  /* long string or simply '[' */
@@ -196,7 +205,12 @@ TokenType Lexer2::Next()
 	}
 
 	_state.Previos = _state.Current;
-	return _state.Type = TT_END_OF_FILE;
+    return _state.Type = TT_END_OF_FILE;
+}
+
+bool Lexer2::Is( TokenType type ) const
+{
+    return _state.Type == type;
 }
 
 const QString Lexer2::CurrentString() const
@@ -252,9 +266,9 @@ bool Lexer2::SkipMultiLineContent( int count ) {
 			SkipNewLine();
 			break;
 		}
-		}
-
-		++_state.Current;
+        default:
+            ++_state.Current;
+        }
 	}
 
 	return false;
@@ -323,7 +337,7 @@ bool Lexer2::ReadString()
 				/* digital escape \ddd */
 				if( !SkipDecimalEscapeSequence() )
 					return false;
-				break; /* escape sequences */
+                continue; /* escape sequences */
 			}
 			}// /* escape sequences */
 		}
@@ -379,24 +393,29 @@ bool Lexer2::SkipHexEscapeSequence()
 void Lexer2::SkipNumber()
 {
 	/* LUA_NUMBER */
-	do {
-		++_state.Current;
-		if( !HasNext() )
-			break;
+    if( _state.Current->unicode() == L'0' ) {
+        ++_state.Current;
+        if( _state.Current->unicode() == L'x' ) {
+            ++_state.Current;
+            while( isHexDigit( _state.Current ) )
+                ++_state.Current;
+            return;
+        }
+    }
+    else {
+        ++_state.Current;
+    }
 
+    while( _state.Current->isNumber() || _state.Current->unicode() == L'.' ) {
+        ++_state.Current;
 		const ushort symbol = _state.Current->unicode();
 		if( symbol == L'E' || symbol == L'e' ) { /* exponent part? */
 			++_state.Current;
-			if( !HasNext() ) {
-				break;
-			}
 			if( symbol == L'+' || symbol == L'-' ) {  /* optional exponent sign */
 				++_state.Current;
-				if( !HasNext() )
-					break;
 			}
 		}
-	} while( _state.Current->isNumber() || _state.Current->unicode() == L'.' );
+    };
 }
 
 bool Lexer2::CurrentIsAlpha() const
