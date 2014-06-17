@@ -5,11 +5,14 @@
 
 AstParser2::AstParser2( const QString& source ) :
 	_source ( source ),
-	_current(),
+	_lexer(),
 
-	_global( AstInfo::Global )
+	_global( AstInfo::Global ),
+	_state( new VariableInfo() )
 {
-    _current = Lexer2( &_source );
+	_lexer = Lexer2( &_source );
+
+	_state->SetText( "Global" );
 }
 
 bool AstParser2::Parse()
@@ -23,7 +26,7 @@ bool AstParser2::Parse()
 		return false;
 	}
 
-    if( !_current.Is( TT_END_OF_FILE ) ) {
+	if( !_lexer.Is( TT_END_OF_FILE ) ) {
 		GenerateError( "Expected end of file" );
 		return false;
 	}
@@ -46,6 +49,11 @@ AstItem* AstParser2::Result()
 	return &_global;
 }
 
+VariableInfo* AstParser2::Global()
+{
+	return _state;
+}
+
 QString AstParser2::Debug()
 {
 	return _global.DebugString();
@@ -56,15 +64,15 @@ bool AstParser2::TryBlock( AstItem* item )
 	QScopedPointer< AstItem > block( new AstItem( AstInfo::Block ) );
 	while( TryStatement( block.data() ) ) {
 		// Skip ending ';'
-        _current.NextIf( TT_SEMICOLON );
+		_lexer.NextIf( TT_SEMICOLON );
 	}
 	if( HasError() )
 		return false;
 
-    if( TryLastStatement( block.data() ) ) {
-        // Skip ending ';'
-        _current.NextIf( TT_SEMICOLON );
-    }
+	if( TryLastStatement( block.data() ) ) {
+		// Skip ending ';'
+		_lexer.NextIf( TT_SEMICOLON );
+	}
 
 	if( HasError() )
 		return false;
@@ -75,7 +83,7 @@ bool AstParser2::TryBlock( AstItem* item )
 
 bool AstParser2::TryStatement( AstItem* item )
 {
-    switch( _current.CurrentType() ) {
+	switch( _lexer.CurrentType() ) {
 	// Try do block end | 													# DO
 	case TT_DO : {
 		if( TryDoStatement( item ) )
@@ -132,9 +140,9 @@ bool AstParser2::TryStatement( AstItem* item )
 
 bool AstParser2::TryLastStatement( AstItem* item )
 {
-    switch( _current.CurrentType() ) {
+	switch( _lexer.CurrentType() ) {
 	case TT_RETURN : {
-        _current.Next(); // skip 'return' keyword
+		_lexer.Next(); // skip 'return' keyword
 
 		QScopedPointer< AstItem > returnStatement( new AstItem( AstInfo::ReturnStatement ) );
 		TryExpressionList( returnStatement.data() );
@@ -144,7 +152,7 @@ bool AstParser2::TryLastStatement( AstItem* item )
 		return true;
 	}
 	case TT_BREAK : {
-        _current.Next(); // skip 'break' keyword
+		_lexer.Next(); // skip 'break' keyword
 
 		new AstItem( AstInfo::BreakStatement, item );
 		return true;
@@ -156,13 +164,13 @@ bool AstParser2::TryLastStatement( AstItem* item )
 bool AstParser2::TryDoStatement( AstItem* item )
 {
 	QScopedPointer< AstItem > doStatement( new AstItem( AstInfo::DoStatement ) );
-    _current.Next(); // skip 'do' keyword
+	_lexer.Next(); // skip 'do' keyword
 
 	TryBlock( doStatement.data() );
 	if( HasError() )
 		return false;
 
-    if( !_current.NextIf( TT_END ) ) {
+	if( !_lexer.NextIf( TT_END ) ) {
 		GenerateError( "Expected 'end' statement to close 'do'" );
 		return false;
 	}
@@ -174,7 +182,7 @@ bool AstParser2::TryDoStatement( AstItem* item )
 bool AstParser2::TryWhileStatement( AstItem* item )
 {
 	QScopedPointer< AstItem > whileStatement( new AstItem( AstInfo::WhileStatement ) );
-    _current.Next(); // skip 'while' keyword
+	_lexer.Next(); // skip 'while' keyword
 
 	if( !TryExpression( whileStatement.data() ) ) {
 		if( !HasError() )
@@ -182,7 +190,7 @@ bool AstParser2::TryWhileStatement( AstItem* item )
 		return false;
 	}
 
-    if( !_current.NextIf( TT_DO ) ) {
+	if( !_lexer.NextIf( TT_DO ) ) {
 		GenerateError( "Expected 'do' statement before 'while' block body" );
 		return false;
 	}
@@ -191,7 +199,7 @@ bool AstParser2::TryWhileStatement( AstItem* item )
 	if( HasError() )
 		return false;
 
-    if( !_current.NextIf( TT_END ) ) {
+	if( !_lexer.NextIf( TT_END ) ) {
 		GenerateError( "Expected 'end' statement to close 'while'" );
 		return false;
 	}
@@ -203,16 +211,16 @@ bool AstParser2::TryWhileStatement( AstItem* item )
 bool AstParser2::TryRepeatStatement( AstItem* item )
 {
 	QScopedPointer< AstItem > repeatStatement( new AstItem( AstInfo::RepeatStatement ) );
-    _current.Next(); // skip 'repeat' keyword
+	_lexer.Next(); // skip 'repeat' keyword
 
 	TryBlock( repeatStatement.data() );
 	if( HasError() )
 		return false;
 
-    if( !_current.NextIf( TT_UNTIL ) ) {
+	if( !_lexer.NextIf( TT_UNTIL ) ) {
 		GenerateError( "Expected 'until' statement to close 'repeat'" );
 		return false;
-    }
+	}
 
 	if( !TryExpression( repeatStatement.data() ) ) {
 		if( !HasError() )
@@ -227,7 +235,7 @@ bool AstParser2::TryRepeatStatement( AstItem* item )
 bool AstParser2::TryIfStatement( AstItem* item )
 {
 	QScopedPointer< AstItem > ifStatement( new AstItem( AstInfo::IfStatement ) );
-    _current.Next(); // skip 'if' keyword
+	_lexer.Next(); // skip 'if' keyword
 
 	if( !TryExpression( ifStatement.data() ) ) {
 		if( !HasError() )
@@ -235,16 +243,16 @@ bool AstParser2::TryIfStatement( AstItem* item )
 		return false;
 	}
 
-    if( !_current.NextIf( TT_THEN ) ) {
+	if( !_lexer.NextIf( TT_THEN ) ) {
 		GenerateError( "Expected 'then' statement after 'if' expression" );
 		return false;
-    }
+	}
 
 	TryBlock( ifStatement.data() );
 	if( HasError() )
 		return false;
 
-    while( _current.NextIf( TT_ELSEIF ) ) {
+	while( _lexer.NextIf( TT_ELSEIF ) ) {
 
 		if( !TryExpression( ifStatement.data() ) ) {
 			if( !HasError() )
@@ -252,7 +260,7 @@ bool AstParser2::TryIfStatement( AstItem* item )
 			return false;
 		}
 
-        if( !_current.NextIf( TT_THEN ) ) {
+		if( !_lexer.NextIf( TT_THEN ) ) {
 			GenerateError( "Expected 'then' statement after 'elseif' expression" );
 			return false;
 		}
@@ -262,14 +270,14 @@ bool AstParser2::TryIfStatement( AstItem* item )
 			return false;
 	}
 
-    if( _current.NextIf( TT_ELSE ) ) {
+	if( _lexer.NextIf( TT_ELSE ) ) {
 
 		TryBlock( ifStatement.data() );
 		if( HasError() )
 			return false;
 	}
 
-    if( !_current.NextIf( TT_END ) ) {
+	if( !_lexer.NextIf( TT_END ) ) {
 		GenerateError( "Expected 'end' statement to close 'if' statement" );
 		return false;
 	}
@@ -281,49 +289,49 @@ bool AstParser2::TryIfStatement( AstItem* item )
 bool AstParser2::TryForStatement( AstItem* item )
 {
 	QScopedPointer< AstItem > forStatement( new AstItem( AstInfo::ForIndexStatement ) );
-    _current.Next(); // skip 'for' keyword
+	_lexer.Next(); // skip 'for' keyword
 
 	if( !ShouldNameList( forStatement.data() ) )
 		return false;
 
-    if( _current.NextIf( TT_ASSIGN ) ) {
-        // index
-        if( forStatement->ChildrenCount() > 1 ) {
-            GenerateError( "Expected only one name before '=' in for statement" );
-            return false;
-        }
+	if( _lexer.NextIf( TT_ASSIGN ) ) {
+		// index
+		if( forStatement->ChildrenCount() > 1 ) {
+			GenerateError( "Expected only one name before '=' in for statement" );
+			return false;
+		}
 
-        if( !TryExpression( forStatement.data() ) ) {
-            if( !HasError() )
-                GenerateError( "Expected expression after '=' in for statement" );
-            return false;
-        }
+		if( !TryExpression( forStatement.data() ) ) {
+			if( !HasError() )
+				GenerateError( "Expected expression after '=' in for statement" );
+			return false;
+		}
 
-        if( !_current.NextIf( TT_COMMA ) ) {
-            GenerateError( "Expected '=' after name in 'for' statement" );
-            return false;
-        }
+		if( !_lexer.NextIf( TT_COMMA ) ) {
+			GenerateError( "Expected '=' after name in 'for' statement" );
+			return false;
+		}
 
-        if( !TryExpression( forStatement.data() ) ) {
-            if( !HasError() )
-                GenerateError( "Expected expression after ',' in for statement" );
-            return false;
-        }
+		if( !TryExpression( forStatement.data() ) ) {
+			if( !HasError() )
+				GenerateError( "Expected expression after ',' in for statement" );
+			return false;
+		}
 
-        // last expression - step
-        if( _current.NextIf( TT_COMMA ) ) {
-            if( !TryExpression( forStatement.data() ) ) {
-                if( !HasError() )
-                    GenerateError( "Expected expression after ',' in for statement" );
-                return false;
-            }
-        }
-    }
-    else {
+		// last expression - step
+		if( _lexer.NextIf( TT_COMMA ) ) {
+			if( !TryExpression( forStatement.data() ) ) {
+				if( !HasError() )
+					GenerateError( "Expected expression after ',' in for statement" );
+				return false;
+			}
+		}
+	}
+	else {
 		// iterator
 		forStatement->SetType( AstInfo::ForIteratorStatement );
 
-        if( !_current.NextIf( TT_IN ) ) {
+		if( !_lexer.NextIf( TT_IN ) ) {
 			GenerateError( "Expected 'in' after namelist in 'for' statement" );
 			return false;
 		}
@@ -336,7 +344,7 @@ bool AstParser2::TryForStatement( AstItem* item )
 	}
 
 	// for body
-    if( !_current.NextIf( TT_DO ) ) {
+	if( !_lexer.NextIf( TT_DO ) ) {
 		GenerateError( "Expected 'do' statement before 'for' block body" );
 		return false;
 	}
@@ -345,7 +353,7 @@ bool AstParser2::TryForStatement( AstItem* item )
 	if( HasError() )
 		return false;
 
-    if( !_current.NextIf( TT_END ) ) {
+	if( !_lexer.NextIf( TT_END ) ) {
 		GenerateError( "Expected 'end' statement to close 'for' statement" );
 		return false;
 	}
@@ -357,33 +365,33 @@ bool AstParser2::TryForStatement( AstItem* item )
 bool AstParser2::TryFunctionStatement( AstItem* item )
 {
 	QScopedPointer< AstItem > functionStatement( new AstItem( AstInfo::FunctionStatement ) );
-    _current.Next(); // skip 'function' keyword
+	_lexer.Next(); // skip 'function' keyword
 
-    if( _current.CurrentType() != TT_NAME ) {
+	if( _lexer.CurrentType() != TT_NAME ) {
 		GenerateError( "Expected name after 'function' keyword" );
 		return false;
 	}
 	functionStatement->AppendChild( new AstItem( AstInfo::Name ) );
-    _current.Next(); // skip name
+	_lexer.Next(); // skip name
 
-    while( _current.NextIf( TT_POINT ) ) {
+	while( _lexer.NextIf( TT_POINT ) ) {
 
-        if( _current.CurrentType() != TT_NAME ) {
+		if( _lexer.CurrentType() != TT_NAME ) {
 			GenerateError( "Expected name after '.' in 'function' statement" );
 			return false;
 		}
 		functionStatement->AppendChild( new AstItem( AstInfo::Name ) );
-        _current.Next(); // skip name
+		_lexer.Next(); // skip name
 	}
 
-    if( _current.NextIf( TT_COLON ) ) {
+	if( _lexer.NextIf( TT_COLON ) ) {
 
-        if( _current.CurrentType() != TT_NAME ) {
+		if( _lexer.CurrentType() != TT_NAME ) {
 			GenerateError( "Expected name after ':' in 'function' statement" );
 			return false;
 		}
 		functionStatement->AppendChild( new AstItem( AstInfo::Name ) );
-        _current.Next(); // skip name
+		_lexer.Next(); // skip name
 	}
 
 	if( !ShouldFunctionBody( functionStatement.data() ) )
@@ -396,17 +404,17 @@ bool AstParser2::TryFunctionStatement( AstItem* item )
 bool AstParser2::TryLocalStatement( AstItem* item )
 {
 	QScopedPointer< AstItem > localStatement( new AstItem( AstInfo::LocalStatement ) );
-    _current.Next(); // skip 'local' keyword
+	_lexer.Next(); // skip 'local' keyword
 
-    if( _current.NextIf( TT_FUNCTION ) ) {
+	if( _lexer.NextIf( TT_FUNCTION ) ) {
 		// single local function define
 
-        if( _current.CurrentType() != TT_NAME ) {
+		if( _lexer.CurrentType() != TT_NAME ) {
 			GenerateError( "Expected name after ':' in 'function' statement" );
 			return false;
 		}
 		localStatement->AppendChild( new AstItem( AstInfo::Name ) );
-        _current.Next(); // skip name
+		_lexer.Next(); // skip name
 
 		if( !ShouldFunctionBody( localStatement.data() ) )
 			return false;
@@ -416,7 +424,7 @@ bool AstParser2::TryLocalStatement( AstItem* item )
 		if( !ShouldNameList( localStatement.data() ) )
 			return false;
 
-        if( _current.NextIf( TT_ASSIGN ) ) {
+		if( _lexer.NextIf( TT_ASSIGN ) ) {
 			if( !TryExpressionList( localStatement.data() ) ) {
 				if( !HasError() )
 					GenerateError( "Expected expression list after '=' in local assignment" );
@@ -451,19 +459,19 @@ bool AstParser2::TryCallOrAssign( AstItem* item )
 	}
 
 	// else var list
-    while( _current.NextIf( TT_COMMA ) )
+	while( _lexer.NextIf( TT_COMMA ) )
 	{
 		if( !TryPrefixExpression( callOrAssign.data() ) )
 			return false;
-        if( callOrAssign->LastChild()->Is( AstInfo::CallStatement ) ) {
+		if( callOrAssign->LastChild()->Is( AstInfo::CallStatement ) ) {
 			GenerateError( "Wrong call" );
 			return false;
 		}
 	}
 	//
 	// should be assigned to
-    if( !_current.NextIf( TT_ASSIGN ) ) {
-        GenerateError( "Expected '=' in assignment" );
+	if( !_lexer.NextIf( TT_ASSIGN ) ) {
+		GenerateError( "Expected '=' in assignment" );
 		return false;
 	}
 
@@ -485,24 +493,27 @@ bool AstParser2::TryPrefixExpression( AstItem* item )
 {
 	QScopedPointer< AstItem > prefix( new AstItem( AstInfo::Prefix ) );
 	// Can be started from Name or '('
-    switch( _current.CurrentType() ) {
+	switch( _lexer.CurrentType() ) {
 	case TT_NAME : {
 		new AstItem( AstInfo::Name, prefix.data() );
-        _current.Next();
+		VariableInfo* var = new VariableInfo();
+		var->SetText( _lexer.CurrentString() );
+		_state->AppendChild( var );
+		_lexer.Next();
 		break;
 	}
 	case TT_LEFT_BRACKET : {
-        _current.Next();
+		_lexer.Next();
 		if( !TryExpression( prefix.data() ) ) {
 			GenerateError( "Wrong bracket" );
 			return false;
 		}
 
-        if( _current.CurrentType() != TT_RIGHT_BRACKET ) {
+		if( _lexer.CurrentType() != TT_RIGHT_BRACKET ) {
 			GenerateError( "Expected ')'" );
 			return false;
 		}
-        _current.Next();
+		_lexer.Next();
 		break;
 	}
 	default :
@@ -520,21 +531,21 @@ bool AstParser2::TryPrefixExpression( AstItem* item )
 bool AstParser2::TryPrefixSubExpression( AstItem* item )
 {
 	QScopedPointer< AstItem > prefix( new AstItem( AstInfo::Prefix ) );
-    switch( _current.CurrentType() ) {
+	switch( _lexer.CurrentType() ) {
 	case TT_POINT : {
-        if( _current.Next() != TT_NAME ) {
+		if( _lexer.Next() != TT_NAME ) {
 			GenerateError( "Name expected" );
 			return false;
 		}
 
 		new AstItem( AstInfo::Name, prefix.data() );
-        _current.Next();
+		_lexer.Next();
 
 		TryPrefixSubExpression( prefix.data() );
 		break;
 	}
 	case TT_LEFT_SQUARE : {
-        _current.Next();
+		_lexer.Next();
 
 		if( !TryExpression( prefix.data() ) ) {
 			if( !HasError() )
@@ -542,7 +553,7 @@ bool AstParser2::TryPrefixSubExpression( AstItem* item )
 			return false;
 		}
 
-        if( !_current.NextIf( TT_RIGHT_SQUARE ) ) {
+		if( !_lexer.NextIf( TT_RIGHT_SQUARE ) ) {
 			GenerateError( "Expected ']'" );
 			return false;
 		}
@@ -552,13 +563,13 @@ bool AstParser2::TryPrefixSubExpression( AstItem* item )
 	}
 	case TT_COLON : {
 		// Call with self
-        if( _current.Next() != TT_NAME ) {
+		if( _lexer.Next() != TT_NAME ) {
 			GenerateError( "Name expected" );
 			return false;
 		}
 
 		new AstItem( AstInfo::Name, prefix.data() );
-        _current.Next();
+		_lexer.Next();
 
 		AstItem* args = new AstItem( AstInfo::Prefix, prefix.data() );
 		if( !TryArgs( args ) ) {
@@ -588,27 +599,27 @@ bool AstParser2::TryArgs( AstItem* item )
 {
 	QScopedPointer< AstItem > args( new AstItem( AstInfo::Args ) );
 
-    switch( _current.CurrentType() ) {
+	switch( _lexer.CurrentType() ) {
 	case TT_LEFT_BRACKET : {
-        _current.Next();
+		_lexer.Next();
 
 		TryExpressionList( args.data() );
 		if( HasError() )
 			return false;
 
-        if( !_current.NextIf( TT_RIGHT_BRACKET ) ) {
-            GenerateError( "Expected ')' in function arguments" );
+		if( !_lexer.NextIf( TT_RIGHT_BRACKET ) ) {
+			GenerateError( "Expected ')' in function arguments" );
 			return false;
 		}
 		break;
 	}
 	case TT_LEFT_CURLY : {
-        _current.Next();
+		_lexer.Next();
 
 		if( !TryConstructor( args.data() ) && HasError() )
 			return false;
 
-        if( !_current.NextIf( TT_RIGHT_CURLY ) ) {
+		if( !_lexer.NextIf( TT_RIGHT_CURLY ) ) {
 			GenerateError( "Expected '}'" );
 			return false;
 		}
@@ -616,7 +627,7 @@ bool AstParser2::TryArgs( AstItem* item )
 	}
 	case TT_STRING : {
 		new AstItem( AstInfo::Literal, args.data() );
-        _current.Next();
+		_lexer.Next();
 		break;
 	}
 	default:
@@ -632,9 +643,9 @@ bool AstParser2::TryConstructor( AstItem* item )
 	QScopedPointer< AstItem > constructor( new AstItem( AstInfo::Constructor ) );
 
 	while( TryField( constructor.data() ) ) {
-        if( _current.CurrentType() == TT_COMMA
-            || _current.CurrentType() == TT_SEMICOLON ) {
-            _current.Next();
+		if( _lexer.CurrentType() == TT_COMMA
+			|| _lexer.CurrentType() == TT_SEMICOLON ) {
+			_lexer.Next();
 		}
 	}
 
@@ -649,42 +660,42 @@ bool AstParser2::TryConstructor( AstItem* item )
 bool AstParser2::TryField( AstItem* item )
 {
 	QScopedPointer< AstItem > field( new AstItem( AstInfo::Field ) );
-    if( _current.CurrentType() == TT_LEFT_SQUARE ) {
-        _current.Next();
+	if( _lexer.CurrentType() == TT_LEFT_SQUARE ) {
+		_lexer.Next();
 		if( !TryExpression( field.data() ) ) {
 			if( !HasError() )
 				GenerateError( "Expected expression" );
 			return false;
 		}
 
-        if( !_current.NextIf( TT_RIGHT_SQUARE ) ) {
-            GenerateError( "Expected ']' in table field" );
+		if( !_lexer.NextIf( TT_RIGHT_SQUARE ) ) {
+			GenerateError( "Expected ']' in table field" );
 			return false;
 		}
 
-        if( !_current.NextIf( TT_ASSIGN ) ) {
-            GenerateError( "Expected '=' in table field after ']'" );
+		if( !_lexer.NextIf( TT_ASSIGN ) ) {
+			GenerateError( "Expected '=' in table field after ']'" );
 			return false;
 		}
 
 		if( !TryExpression( field.data() ) ) {
 			if( !HasError() )
-                GenerateError( "Expected expression after '='" );
+				GenerateError( "Expected expression after '='" );
 			return false;
 		}
 	}
-    else if( TryExpression( field.data() ) ) {
-        if( _current.NextIf( TT_ASSIGN ) ) {
-            if( !TryExpression( field.data() ) ) {
-                if( !HasError() )
-                    GenerateError( "Expected expression after '='" );
-                return false;
-            }
-        }
-    }
-    else {
-        return false;
-    }
+	else if( TryExpression( field.data() ) ) {
+		if( _lexer.NextIf( TT_ASSIGN ) ) {
+			if( !TryExpression( field.data() ) ) {
+				if( !HasError() )
+					GenerateError( "Expected expression after '='" );
+				return false;
+			}
+		}
+	}
+	else {
+		return false;
+	}
 
 	item->AppendChild( field.take() );
 	return true;
@@ -697,10 +708,10 @@ bool AstParser2::TryExpressionList( AstItem* item )
 	if( !TryExpression( list.data() ) )
 		return false;
 
-    while( _current.NextIf( TT_COMMA ) ) {
+	while( _lexer.NextIf( TT_COMMA ) ) {
 		if( !TryExpression( list.data() ) ) {
 			if( !HasError() )
-                GenerateError( "Expected Expression in expression list" );
+				GenerateError( "Expected Expression in expression list" );
 			return false;
 		}
 	}
@@ -725,10 +736,10 @@ bool AstParser2::TryExpression( AstItem* item )
 {
 	QScopedPointer< AstItem > expression( new AstItem( AstInfo::Expression ) );
 
-    switch( _current.CurrentType() ) {
+	switch( _lexer.CurrentType() ) {
 	case TT_NOT : case TT_MINUS : case TT_NUMBER_SIGN : {
 		QScopedPointer< AstItem > unary( new AstItem( AstInfo::UnaryOperator ) );
-        _current.Next();
+		_lexer.Next();
 
 		if( !TryExpression( unary.data() ) ) {
 			if( !HasError() )
@@ -742,24 +753,24 @@ bool AstParser2::TryExpression( AstItem* item )
 	case TT_NIL : case TT_TRUE : case TT_FALSE : case TT_DOTS :
 	case TT_NUMBER : case TT_STRING : {
 		expression->AppendChild( new AstItem( AstInfo::Literal ) );
-        _current.Next();
+		_lexer.Next();
 		break;
 	}
 	case TT_FUNCTION : {
-        _current.Next();
+		_lexer.Next();
 
 		if( !ShouldFunctionBody( expression.data() ) )
 			return false;
 		break;
 	}
 	case TT_LEFT_CURLY : {
-        _current.Next(); // skip '{'
+		_lexer.Next(); // skip '{'
 
 		if( !TryConstructor( expression.data() ) && HasError() )
 			return false;
 
-        if( !_current.NextIf( TT_RIGHT_CURLY ) ) {
-            GenerateError( "Expected '}' to close constructor" );
+		if( !_lexer.NextIf( TT_RIGHT_CURLY ) ) {
+			GenerateError( "Expected '}' to close constructor" );
 			return false;
 		}
 		break;
@@ -769,8 +780,8 @@ bool AstParser2::TryExpression( AstItem* item )
 			return false;
 	}
 
-    if( IsBinaryOperator( _current.CurrentType() ) ) {
-        _current.Next();
+	if( IsBinaryOperator( _lexer.CurrentType() ) ) {
+		_lexer.Next();
 
 		QScopedPointer< AstItem > newBinaryExpression( new AstItem( AstInfo::Expression ) );
 		AstItem* binary = new AstItem( AstInfo::BinaryOperator, newBinaryExpression.data() );
@@ -794,7 +805,7 @@ bool AstParser2::ShouldFunctionBody( AstItem* item )
 {
 	QScopedPointer< AstItem > functionBody( new AstItem( AstInfo::FunctionBody ) );
 
-    if( !_current.NextIf( TT_LEFT_BRACKET ) ) {
+	if( !_lexer.NextIf( TT_LEFT_BRACKET ) ) {
 		GenerateError( "Expected '(' to define arguments in function body" );
 		return false;
 	}
@@ -803,7 +814,7 @@ bool AstParser2::ShouldFunctionBody( AstItem* item )
 	if( HasError() )
 		return false;
 
-    if( !_current.NextIf( TT_RIGHT_BRACKET ) ) {
+	if( !_lexer.NextIf( TT_RIGHT_BRACKET ) ) {
 		GenerateError( "Expected ')' to close function arguments in function body" );
 		return false;
 	}
@@ -812,7 +823,7 @@ bool AstParser2::ShouldFunctionBody( AstItem* item )
 	if( HasError() )
 		return false;
 
-    if( !_current.NextIf( TT_END ) ) {
+	if( !_lexer.NextIf( TT_END ) ) {
 		GenerateError( "Expected 'end' statement to close function body" );
 		return false;
 	}
@@ -827,7 +838,7 @@ bool AstParser2::TryFunctionParams( AstItem* item )
 		return false;
 	}
 
-    while( _current.NextIf( TT_COMMA ) ) {
+	while( _lexer.NextIf( TT_COMMA ) ) {
 		if( !TryFunctionParam( item ) ) {
 			GenerateError( "Expected name or '...'" );
 			return false;
@@ -841,14 +852,14 @@ bool AstParser2::TryFunctionParams( AstItem* item )
 
 bool AstParser2::TryFunctionParam( AstItem* item )
 {
-    if( _current.CurrentType() == TT_NAME )	 {
+	if( _lexer.CurrentType() == TT_NAME )	 {
 		new AstItem( AstInfo::Name, item );
-        _current.Next();
+		_lexer.Next();
 		return true;
 	}
-    else if( _current.CurrentType() == TT_DOTS ) {
+	else if( _lexer.CurrentType() == TT_DOTS ) {
 		new AstItem( AstInfo::Dots, item );
-        _current.Next();
+		_lexer.Next();
 		return true;
 	}
 
@@ -857,20 +868,20 @@ bool AstParser2::TryFunctionParam( AstItem* item )
 
 bool AstParser2::ShouldNameList( AstItem* item )
 {
-    if( _current.CurrentType() != TT_NAME ) {
+	if( _lexer.CurrentType() != TT_NAME ) {
 		GenerateError( "Expected name after 'for/local' keyword" );
 		return false;
 	}
 	item->AppendChild( new AstItem( AstInfo::Name ) );
-    _current.Next(); // skip name
+	_lexer.Next(); // skip name
 
-    while( _current.NextIf( TT_COMMA ) ) {
-        if( _current.CurrentType() != TT_NAME ) {
+	while( _lexer.NextIf( TT_COMMA ) ) {
+		if( _lexer.CurrentType() != TT_NAME ) {
 			GenerateError( "Expected name after ',' in 'for/local' statement" );
 			return false;
 		}
 		item->AppendChild( new AstItem( AstInfo::Name ) );
-        _current.Next(); // skip name
+		_lexer.Next(); // skip name
 	}
 
 	return true;
@@ -883,9 +894,9 @@ void AstParser2::GenerateError( const QString& description )
 
 	QString error( "Error: " );
 	error.append( description ).append( "\n" )
-			.append( "at pos: " ).append( QString::number( _current.CurrentPos() ) )
-			.append( ", line: " ).append( QString::number( _current.CurrentLine() ) )
-			.append( "\ntext: ").append( _current.CurrentType() == TT_END_OF_FILE ? "End of file" : _current.CurrentString() );
+			.append( "at pos: " ).append( QString::number( _lexer.CurrentPos() ) )
+			.append( ", line: " ).append( QString::number( _lexer.CurrentLine() ) )
+			.append( "\ntext: ").append( _lexer.CurrentType() == TT_END_OF_FILE ? "End of file" : _lexer.CurrentString() );
 
 	_error = error;
 	qDebug( qPrintable( error ) );

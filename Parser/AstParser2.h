@@ -4,6 +4,7 @@
 #include "Lexer/Lexer2.h"
 
 #include "Data/AstItem.h"
+#include "Data/VariableInfo.h"
 
 class AstParser2
 {
@@ -16,6 +17,7 @@ public:
 	QString Error() const;
 
 	AstItem* Result();
+	VariableInfo* Global();
 
 	QString Debug();
 
@@ -52,13 +54,14 @@ private:
 	void GenerateError( const QString& description );
 
 private:
-	Lexer2 _current;
+	Lexer2 _lexer;
 
 	const QString _source;
 
 	QString _error;
 
 	AstItem _global;
+	VariableInfo* _state;
 };
 
 #endif // ASTPARSER_2_H

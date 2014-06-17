@@ -14,6 +14,7 @@
 #include "Editor.h"
 
 #include "Model/CodeModel2.h"
+#include "Model/ObjectModel.h"
 #include "Parser/AstParser2.h"
 
 MainWindow::MainWindow( QWidget* parent )
@@ -51,8 +52,17 @@ void MainWindow::openFile(const QString &path)
 		if( file.open( QFile::ReadOnly | QFile::Text ) ) {
 			editor->setPlainText( file.readAll() );
 
-			CodeModel2* model = qobject_cast< CodeModel2* >( treeView->model() );
-			model->RebuildModel( editor->toPlainText() );
+			AstParser2* parser = new AstParser2( editor->toPlainText() );
+			parser->Parse();
+
+			ObjectModel* model = new ObjectModel();
+
+			model->SetNewRoot( parser->Global() );
+
+			treeView->setModel( model );
+
+//			CodeModel2* model = qobject_cast< CodeModel2* >( treeView->model() );
+//			model->RebuildModel( editor->toPlainText() );
 		}
 	}
 }
