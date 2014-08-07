@@ -52,12 +52,15 @@ void MainWindow::openFile(const QString &path)
 		if( file.open( QFile::ReadOnly | QFile::Text ) ) {
 			editor->setPlainText( file.readAll() );
 
-			AstParser2* parser = new AstParser2( editor->toPlainText() );
-			parser->Parse();
+//			AstParser2* parser = new AstParser2( editor->toPlainText() );
+//			parser->Parse();
 
-			ObjectModel* model = new ObjectModel();
+//			ObjectModel* model = new ObjectModel();
 
-			model->SetNewRoot( parser->Global() );
+//			model->SetNewRoot( parser->Global() );
+
+			CodeModel2* model = new CodeModel2();
+			model->RebuildModel( editor->toPlainText() );
 
 			treeView->setModel( model );
 

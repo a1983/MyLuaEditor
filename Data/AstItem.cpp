@@ -1,5 +1,7 @@
 #include "AstItem.h"
 
+#include "Lexer/Lexer2.h"
+
 AstItem::AstItem( AstItem* parent ) :
 	_parent( parent )
 {
@@ -18,6 +20,13 @@ AstItem::AstItem( const AstInfo::Type& type, AstItem* parent) :
 	}
 }
 
+AstItem::AstItem( const AstInfo::Type& type, const Lexer2& lexer ) :
+	_parent( nullptr )
+{
+	Info.AstType = type;
+	Info.Text = lexer.CurrentText();
+}
+
 AstItem::~AstItem()
 {
 	qDeleteAll( _children );
@@ -32,12 +41,19 @@ void AstItem::AppendChild( AstItem* child )
 	_children.append( child );
 }
 
+void AstItem::SwapInfo( AstItem* other )
+{
+	AstInfo swapInfo = Info;
+	Info = other->Info;
+	other->Info = swapInfo;
+}
+
 const AstItem* AstItem::Child( int index ) const
 {
 	return _children.value( index );
 }
 
-const AstItem* AstItem::LastChild()
+const AstItem* AstItem::LastChild() const
 {
 	return _children.last();
 }
@@ -50,6 +66,26 @@ void AstItem::SetType( AstInfo::Type type )
 QString AstItem::TypeText() const
 {
 	return AstTypeText( Info.AstType );
+}
+
+void AstItem::SetText( const QString& text )
+{
+	Info.Text = text;
+}
+
+QString AstItem::Text() const
+{
+	return Info.Text;
+}
+
+void AstItem::SetPriority( int priority )
+{
+	Info.Priority = priority;
+}
+
+int AstItem::Priority() const
+{
+	return Info.Priority;
 }
 
 bool AstItem::Is( AstInfo::Type type ) const

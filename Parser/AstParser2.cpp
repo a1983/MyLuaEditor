@@ -7,12 +7,9 @@ AstParser2::AstParser2( const QString& source ) :
 	_source ( source ),
 	_lexer(),
 
-	_global( AstInfo::Global ),
-	_state( new VariableInfo() )
+	_global( AstInfo::Global )
 {
 	_lexer = Lexer2( &_source );
-
-	_state->SetText( "Global" );
 }
 
 bool AstParser2::Parse()
@@ -51,7 +48,7 @@ AstItem* AstParser2::Result()
 
 VariableInfo* AstParser2::Global()
 {
-	return _state;
+	return 0;
 }
 
 QString AstParser2::Debug()
@@ -66,6 +63,7 @@ bool AstParser2::TryBlock( AstItem* item )
 		// Skip ending ';'
 		_lexer.NextIf( TT_SEMICOLON );
 	}
+
 	if( HasError() )
 		return false;
 
@@ -148,6 +146,7 @@ bool AstParser2::TryLastStatement( AstItem* item )
 		TryExpressionList( returnStatement.data() );
 		if( HasError() )
 			return false;
+
 		item->AppendChild( returnStatement.take() );
 		return true;
 	}
@@ -371,7 +370,7 @@ bool AstParser2::TryFunctionStatement( AstItem* item )
 		GenerateError( "Expected name after 'function' keyword" );
 		return false;
 	}
-	functionStatement->AppendChild( new AstItem( AstInfo::Name ) );
+	functionStatement->AppendChild( new AstItem( AstInfo::Name, _lexer ) );
 	_lexer.Next(); // skip name
 
 	while( _lexer.NextIf( TT_POINT ) ) {
@@ -380,7 +379,7 @@ bool AstParser2::TryFunctionStatement( AstItem* item )
 			GenerateError( "Expected name after '.' in 'function' statement" );
 			return false;
 		}
-		functionStatement->AppendChild( new AstItem( AstInfo::Name ) );
+		functionStatement->AppendChild( new AstItem( AstInfo::Name, _lexer ) );
 		_lexer.Next(); // skip name
 	}
 
@@ -390,7 +389,7 @@ bool AstParser2::TryFunctionStatement( AstItem* item )
 			GenerateError( "Expected name after ':' in 'function' statement" );
 			return false;
 		}
-		functionStatement->AppendChild( new AstItem( AstInfo::Name ) );
+		functionStatement->AppendChild( new AstItem( AstInfo::Name, _lexer ) );
 		_lexer.Next(); // skip name
 	}
 
@@ -438,12 +437,7 @@ bool AstParser2::TryLocalStatement( AstItem* item )
 }
 
 bool IsCall( const AstItem* item ) {
-	const AstItem* suffix = item->Child( 1 );
-	if( suffix && suffix->Is( AstInfo::Prefix ) )
-		return IsCall( suffix );
-
-	const AstItem* args = item->Child( 0 );
-	return args && args->Is( AstInfo::Args );
+	return item->HasChildren() && item->LastChild()->Is( AstInfo::Args );
 }
 
 bool AstParser2::TryCallOrAssign( AstItem* item )
@@ -453,7 +447,7 @@ bool AstParser2::TryCallOrAssign( AstItem* item )
 		return false;
 
 	if( IsCall( callOrAssign->Child( 0 ) ) ) {
-		callOrAssign->Info.AstType = AstInfo::CallStatement;
+		callOrAssign->SetType( AstInfo::CallStatement );
 		item->AppendChild( callOrAssign.take() );
 		return true;
 	}
@@ -468,14 +462,13 @@ bool AstParser2::TryCallOrAssign( AstItem* item )
 			return false;
 		}
 	}
-	//
+
 	// should be assigned to
 	if( !_lexer.NextIf( TT_ASSIGN ) ) {
 		GenerateError( "Expected '=' in assignment" );
 		return false;
 	}
 
-	//
 	// expression list
 	if( !TryExpressionList( callOrAssign.data() ) ) {
 		if( !HasError() ) {
@@ -484,7 +477,7 @@ bool AstParser2::TryCallOrAssign( AstItem* item )
 		return false;
 	}
 
-	callOrAssign->Info.AstType = AstInfo::AssignStatement;
+	callOrAssign->SetType( AstInfo::AssignStatement );
 	item->AppendChild( callOrAssign.take() );
 	return true;
 }
@@ -495,10 +488,9 @@ bool AstParser2::TryPrefixExpression( AstItem* item )
 	// Can be started from Name or '('
 	switch( _lexer.CurrentType() ) {
 	case TT_NAME : {
-		new AstItem( AstInfo::Name, prefix.data() );
-		VariableInfo* var = new VariableInfo();
-		var->SetText( _lexer.CurrentString() );
-		_state->AppendChild( var );
+		AstItem* name = new AstItem( AstInfo::Name, prefix.data() );
+		name->SetText( _lexer.CurrentText() );
+
 		_lexer.Next();
 		break;
 	}
@@ -530,7 +522,7 @@ bool AstParser2::TryPrefixExpression( AstItem* item )
 
 bool AstParser2::TryPrefixSubExpression( AstItem* item )
 {
-	QScopedPointer< AstItem > prefix( new AstItem( AstInfo::Prefix ) );
+//	QScopedPointer< AstItem > prefix( new AstItem( AstInfo::Prefix ) );
 	switch( _lexer.CurrentType() ) {
 	case TT_POINT : {
 		if( _lexer.Next() != TT_NAME ) {
@@ -538,16 +530,17 @@ bool AstParser2::TryPrefixSubExpression( AstItem* item )
 			return false;
 		}
 
-		new AstItem( AstInfo::Name, prefix.data() );
+		AstItem* name = new AstItem( AstInfo::Name, item );
+		name->SetText( _lexer.CurrentText() );
 		_lexer.Next();
 
-		TryPrefixSubExpression( prefix.data() );
+		TryPrefixSubExpression( item );
 		break;
 	}
 	case TT_LEFT_SQUARE : {
 		_lexer.Next();
 
-		if( !TryExpression( prefix.data() ) ) {
+		if( !TryExpression( item ) ) {
 			if( !HasError() )
 				GenerateError( "Expected expression" );
 			return false;
@@ -558,7 +551,7 @@ bool AstParser2::TryPrefixSubExpression( AstItem* item )
 			return false;
 		}
 
-		TryPrefixSubExpression( prefix.data() );
+		TryPrefixSubExpression( item );
 		break;
 	}
 	case TT_COLON : {
@@ -568,22 +561,22 @@ bool AstParser2::TryPrefixSubExpression( AstItem* item )
 			return false;
 		}
 
-		new AstItem( AstInfo::Name, prefix.data() );
+		AstItem* name = new AstItem( AstInfo::Name, item );
+		name->SetText( _lexer.CurrentText() );
 		_lexer.Next();
 
-		AstItem* args = new AstItem( AstInfo::Prefix, prefix.data() );
-		if( !TryArgs( args ) ) {
+		if( !TryArgs( item ) ) {
 			if( !HasError() )
 				GenerateError( "Expected function call" );
 			return false;
 		}
 
-		TryPrefixSubExpression( args );
+		TryPrefixSubExpression( item );
 		break;
 	}
 	default:
-		if( TryArgs( prefix.data() ) )
-			TryPrefixSubExpression( prefix.data() );
+		if( TryArgs( item ) )
+			TryPrefixSubExpression( item );
 		else
 			return false;
 	}
@@ -591,7 +584,7 @@ bool AstParser2::TryPrefixSubExpression( AstItem* item )
 	if( HasError() )
 		return false;
 
-	item->AppendChild( prefix.take() );
+//	item->AppendChild( prefix.take() );
 	return true;
 }
 
@@ -732,27 +725,65 @@ bool IsBinaryOperator( TokenType type ) {
 	return false;
 }
 
+int GetPriority( TokenType tokenType ) {
+	switch( tokenType ) {
+	case TT_CARET :
+		return 3;
+	case TT_MAGNIFY : case TT_SLASH :
+		return 2;
+	case TT_PLUS : case TT_MINUS :
+		return 1;
+	default:
+		return 0;
+	}
+}
+
+AstItem* FindLowestPriorityItem( AstItem* item, int priority ) {
+	AstItem* result = item;
+
+	AstItem* parent = result->Parent();
+	forever {
+		if( parent ) {
+			parent = parent->Parent();
+			if( parent
+				&& priority < parent->Priority()
+				&& parent->Priority() > 0 ) {
+				result = parent;
+				parent = parent->Parent();
+				continue;
+			}
+		}
+		break;
+	}
+
+	return result;
+}
+
 bool AstParser2::TryExpression( AstItem* item )
 {
 	QScopedPointer< AstItem > expression( new AstItem( AstInfo::Expression ) );
 
 	switch( _lexer.CurrentType() ) {
 	case TT_NOT : case TT_MINUS : case TT_NUMBER_SIGN : {
-		QScopedPointer< AstItem > unary( new AstItem( AstInfo::UnaryOperator ) );
-		_lexer.Next();
+		AstItem* unary( new AstItem( AstInfo::UnaryOperator, _lexer ) );
+		expression->AppendChild( unary );
+		item->AppendChild( expression.take() );
 
-		if( !TryExpression( unary.data() ) ) {
+		_lexer.Next(); // skip unary operator
+
+		unary->SetPriority( 10 );
+		if( !TryExpression( unary ) ) {
 			if( !HasError() )
-				GenerateError( "Expected expression" );
+				GenerateError( "Expected expression after unary operation" );
 			return false;
 		}
-		expression->AppendChild( unary.take() );
 
-		break;
+//		break;
+		return true;
 	}
 	case TT_NIL : case TT_TRUE : case TT_FALSE : case TT_DOTS :
 	case TT_NUMBER : case TT_STRING : {
-		expression->AppendChild( new AstItem( AstInfo::Literal ) );
+		expression->AppendChild( new AstItem( AstInfo::Literal, _lexer ) );
 		_lexer.Next();
 		break;
 	}
@@ -781,23 +812,57 @@ bool AstParser2::TryExpression( AstItem* item )
 	}
 
 	if( IsBinaryOperator( _lexer.CurrentType() ) ) {
-		_lexer.Next();
 
-		QScopedPointer< AstItem > newBinaryExpression( new AstItem( AstInfo::Expression ) );
-		AstItem* binary = new AstItem( AstInfo::BinaryOperator, newBinaryExpression.data() );
-		if( !TryExpression( binary ) ) {
-			if( !HasError() )
-				GenerateError( "Expected expression" );
-			return false;
+		int rightPriority = GetPriority( _lexer.CurrentType() );
+
+		QScopedPointer< AstItem > newSubExpression( new AstItem( AstInfo::Expression ) );
+		AstItem* binary = new AstItem( AstInfo::BinaryOperator, newSubExpression.data() );
+		binary->SetText( _lexer.CurrentText() );
+		binary->SetPriority( rightPriority );
+
+		_lexer.Next(); // skip binary operator
+
+		if( item->Priority() <= rightPriority ) {
+
+			item->AppendChild( newSubExpression.take() );
+
+			// set lhs for binary operator
+			binary->AppendChild( expression.take() );
+
+			// set rhs for binary operator ( possibly change priority )
+			if( !TryExpression( binary ) ) {
+				if( !HasError() )
+					GenerateError( "Expected expression after binary operation" );
+				return false;
+			}
+
+			return true;
 		}
+		else {
 
-		binary->AppendChild( expression.take() );
-		item->AppendChild( newBinaryExpression.take() );
-		return true;
+			// set lhs to previos priority expression rhs
+			item->AppendChild( expression.take() );
+
+			//find top level
+			// set previos priority opertion to current operation lhs
+			AstItem* lowestPriorityItem = FindLowestPriorityItem( item, rightPriority );
+
+			lowestPriorityItem->Parent()->AppendChild( binary );
+			newSubExpression->AppendChild( lowestPriorityItem );
+			binary->AppendChild( newSubExpression.take() );
+
+			// set rhs for binary operator ( possibly change priority )
+			if( !TryExpression( binary ) ) {
+				if( !HasError() )
+					GenerateError( "Expected expression after binary operation" );
+				return false;
+			}
+
+			return true;
+		}
 	}
 
 	item->AppendChild( expression.take() );
-
 	return true;
 }
 
@@ -896,7 +961,7 @@ void AstParser2::GenerateError( const QString& description )
 	error.append( description ).append( "\n" )
 			.append( "at pos: " ).append( QString::number( _lexer.CurrentPos() ) )
 			.append( ", line: " ).append( QString::number( _lexer.CurrentLine() ) )
-			.append( "\ntext: ").append( _lexer.CurrentType() == TT_END_OF_FILE ? "End of file" : _lexer.CurrentString() );
+			.append( "\ntext: ").append( _lexer.CurrentType() == TT_END_OF_FILE ? "End of file" : _lexer.CurrentText() );
 
 	_error = error;
 	qDebug( qPrintable( error ) );

@@ -19,7 +19,7 @@ VariableInfo::~VariableInfo()
 }
 
 //
-void VariableInfo::SetText(const QString& text)
+void VariableInfo::SetText( const QString& text )
 {
 	_properties[ TextProperty ].setValue( text );
 }

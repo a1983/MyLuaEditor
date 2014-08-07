@@ -5,6 +5,8 @@
 
 struct AstInfo {
 	enum Type {
+		Unknown = -1,
+
 		Global,
 
 		Block,
@@ -37,7 +39,16 @@ struct AstInfo {
 
 		FunctionBody
 	};
-	Type AstType;
+
+	Type	AstType;
+
+	QString Text;
+
+	int		Priority;
+
+	AstInfo() :
+		AstType( Unknown ),
+		Priority( -1 ) {}
 };
 
 QString AstTypeText( AstInfo::Type type );

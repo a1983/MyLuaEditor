@@ -6,22 +6,31 @@
 
 #include "AstInfo.h"
 
+class Lexer2;
+
 class AstItem
 {
 public:
 	explicit AstItem( AstItem* parent = nullptr );
 	explicit AstItem( const AstInfo::Type& type, AstItem* parent = nullptr );
+	explicit AstItem( const AstInfo::Type& type, const Lexer2& lexer );
 	~AstItem();
 
 	void AppendChild( AstItem* child );
 
+	void SwapInfo( AstItem* other );
+
 	const AstItem* Child( int index ) const;
-	const AstItem* LastChild();
+	const AstItem* LastChild() const;
 
 	void SetType( AstInfo::Type type );
 	QString TypeText() const;
 
-	AstInfo Info;
+	void SetText( const QString& text );
+	QString Text() const;
+
+	void SetPriority( int priority );
+	int Priority() const;
 
 	bool	Is( AstInfo::Type type ) const;
 	bool	HasParent() const;
@@ -37,6 +46,8 @@ public:
 	QString DebugString( int level = 0 ) const;
 
 private:
+	AstInfo Info;
+
 	AstItem*				_parent;
 	QList< const AstItem* > _children;
 };

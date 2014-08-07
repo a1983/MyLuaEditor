@@ -61,7 +61,6 @@ private:
 	QString _error;
 
 	AstItem _global;
-	VariableInfo* _state;
 };
 
 #endif // ASTPARSER_2_H

@@ -98,8 +98,14 @@ QVariant CodeModel2::data( const QModelIndex& index, int role ) const
 	QVariant result;
 	switch ( role ) {
 	case Qt::DisplayRole :
-		if( astItem )
-			result = astItem->TypeText();
+		if( astItem ) {
+			if( astItem->Text().size() > 0 ) {
+				result = astItem->Text().append( "::" ).append( astItem->TypeText() );
+			}
+			else {
+				result = astItem->TypeText();
+			}
+		}
 		break;
 	default:
 		break;
