@@ -742,19 +742,15 @@ AstItem* FindLowestPriorityItem( AstItem* item, int priority ) {
 	AstItem* result = item;
 
 	AstItem* parent = result->Parent();
-	forever {
-		if( parent ) {
-			parent = parent->Parent();
-			if( parent
-				&& priority < parent->Priority()
-				&& parent->Priority() > 0 ) {
-				result = parent;
-				parent = parent->Parent();
-				continue;
-			}
-		}
-		break;
-	}
+    while( parent ) {
+        parent = parent->Parent();
+        bool isLowerPriority = parent && ( priority < parent->Priority() );
+        if( !isLowerPriority )
+            break;
+
+        result = parent;
+        parent = parent->Parent(); // advance to parent owner ( expression <- item )
+    }
 
 	return result;
 }
