@@ -33,7 +33,6 @@ Highlighter::Highlighter( QTextDocument* parent )
 	_keywords.insert( QStringRef( new QString( "elseif" ) ) );
 	_keywords.insert( QStringRef( new QString( "for" ) ) );
 	_keywords.insert( QStringRef( new QString( "in" ) ) );
-	_keywords.insert( QStringRef( new QString( "setmetatable" ) ) );
 	_keywords.insert( QStringRef( new QString( "do" ) ) );
 	_keywords.insert( QStringRef( new QString( "break" ) ) );
 	_keywords.insert( QStringRef( new QString( "and" ) ) );
@@ -42,6 +41,7 @@ Highlighter::Highlighter( QTextDocument* parent )
 	_keywords.insert( QStringRef( new QString( "true" ) ) );
 	_keywords.insert( QStringRef( new QString( "nil" ) ) );
 	_keywords.insert( QStringRef( new QString( "false" ) ) );
+    _keywords.insert( QStringRef( new QString( "while" ) ) );
 	_keywords.insert( QStringRef( new QString( "repeat" ) ) );
 	_keywords.insert( QStringRef( new QString( "until" ) ) );
 

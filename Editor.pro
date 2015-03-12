@@ -2,7 +2,11 @@
 QT += widgets
 QT += concurrent
 
-DESTDIR = ${PWD}/../../Editor/bin
+win32-g++ : {
+    QMAKE_CXXFLAGS += -std=c++11
+}
+
+DESTDIR = ../Editor/bin
 
 HEADERS +=              \
 	$$PWD/*.h           \
